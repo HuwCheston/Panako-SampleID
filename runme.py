@@ -12,7 +12,7 @@ import os
 def store_candidates(candidate_filepath: str = 'candidates.txt') -> None:
     with open(candidate_filepath, 'r') as op:
         for line in list(op):
-            output = subprocess.check_output(['panako', 'store', line.strip()], text=True).strip()
+            output = subprocess.check_output(['panako', 'STRATEGY=panako', 'store',  line.strip()], text=True).strip()
             print(output)
 
 
@@ -23,11 +23,7 @@ def resolve_panako_ids_to_tracknames(
     if os.path.isfile(output_filepath):
         print(f"File already exists: {output_filepath}")
         print("Skipping resolve IDs...")
-        with open(output_filepath, mode='r') as infile:
-            reader = csv.reader(infile)
-            return {rows[1]: rows[0] for rows in reader}
     else:
-        mapper = {}
         # Open the CSV file for writing
         with open(output_filepath, mode='w', newline='') as csvfile:
             csv_writer = csv.writer(csvfile)    # Don't need a header
@@ -38,13 +34,14 @@ def resolve_panako_ids_to_tracknames(
                     line = line.strip()  # Remove leading/trailing whitespace
                     # Execute the command and capture the output
                     try:
-                        output = subprocess.check_output(['panako', 'resolve', line], text=True).strip()
+                        output = subprocess.check_output(['panako', 'STRATEGY=panako', 'resolve', line], text=True).strip()
                     except subprocess.CalledProcessError as e:
                         output = f"Error: {e}"
                     # Write the line and output to the CSV file
                     csv_writer.writerow([line, output])
-                    mapper[line] = output
-        return mapper
+    with open(output_filepath, mode='r') as infile:
+        reader = csv.reader(infile)
+        return {int(rows[1]): rows[0] for rows in reader}
 
 
 def load_query_candidate_relations(relations_fpath: str = 'relations.txt') -> dict:
@@ -64,12 +61,12 @@ def load_query_candidate_relations(relations_fpath: str = 'relations.txt') -> di
 def query_panako(query_filename: str, candidate_id_resolver: dict) -> list[str]:
     print('Querying: ', query_filename)
     # opt ['PANAKO_MIN_HITS_UNFILTERED=1', 'PANAKO_MIN_HITS_FILTERED=1', 'PANAKO_MIN_MATCH_DURATION=1']
-    res = subprocess.check_output(['panako', 'query', query_filename.strip()], text=True).strip()
+    res = subprocess.check_output(['panako', 'STRATEGY=panako', 'query', query_filename.strip()], text=True).strip()
     res = res.splitlines()[1:-1]
     query_hits = []
     for cand in res:
         # Get the ID as second word
-        id_ = cand.split(' ')[1]
+        id_ = int(cand.split(' ')[1])
         try:
             matched_id = candidate_id_resolver[id_]
         except KeyError:
@@ -110,7 +107,9 @@ if __name__ == "__main__":
     average_precisions = []
     for query, ground_truths in query_cand_relations.items():
         ranked_candidates_panako = query_panako(query, cand_mapper)
+        print(f"Query {query}, sorted candidates: ", ranked_candidates_panako)
         ap = compute_average_precision(ground_truths, ranked_candidates_panako)
+        print(f"Query {query}, average precision: ", ap)
         average_precisions.append(ap)
 
     mean_average_precision = sum(average_precisions) / len(average_precisions)
