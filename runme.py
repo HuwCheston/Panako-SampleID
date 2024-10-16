@@ -12,7 +12,7 @@ import os
 def store_candidates(candidate_filepath: str = 'candidates.txt') -> None:
     with open(candidate_filepath, 'r') as op:
         for line in list(op):
-            output = subprocess.check_output(['panako', 'store', 'STRATEGY=panako', line.strip()], text=True).strip()
+            output = subprocess.check_output(['panako', 'store', line.strip()], text=True).strip()
             print(output)
 
 
@@ -64,7 +64,7 @@ def load_query_candidate_relations(relations_fpath: str = 'relations.txt') -> di
 def query_panako(query_filename: str, candidate_id_resolver: dict) -> list[str]:
     print('Querying: ', query_filename)
     # opt ['PANAKO_MIN_HITS_UNFILTERED=1', 'PANAKO_MIN_HITS_FILTERED=1', 'PANAKO_MIN_MATCH_DURATION=1']
-    res = subprocess.check_output(['panako', 'query', 'STRATEGY=panako', query_filename.strip()], text=True).strip()
+    res = subprocess.check_output(['panako', 'query', query_filename.strip()], text=True).strip()
     res = res.splitlines()[1:-1]
     query_hits = []
     for cand in res:
