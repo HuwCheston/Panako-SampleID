@@ -12,7 +12,7 @@ import os
 def store_candidates(candidate_filepath: str = 'candidates.txt') -> None:
     with open(candidate_filepath, 'r') as op:
         for line in list(op):
-            output = subprocess.check_output(['panako', 'STRATEGY=panako', 'store',  line.strip()], text=True).strip()
+            output = subprocess.check_output(['panako', 'AVAILABLE_PROCESSORS=0', 'STRATEGY=panako', 'store',  line.strip()], text=True).strip()
             print(output)
 
 
@@ -58,22 +58,28 @@ def load_query_candidate_relations(relations_fpath: str = 'relations.txt') -> di
     return relations
 
 
-def query_panako(query_filename: str, candidate_id_resolver: dict) -> list[str]:
+def query_panako(query_filename: str) -> list[str]:
     print('Querying: ', query_filename)
-    # opt ['PANAKO_MIN_HITS_UNFILTERED=1', 'PANAKO_MIN_HITS_FILTERED=1', 'PANAKO_MIN_MATCH_DURATION=1']
-    res = subprocess.check_output(['panako', 'STRATEGY=panako', 'query', query_filename.strip()], text=True).strip()
+    opt = [
+        'AVAILABLE_PROCESSORS=0',
+        'PANAKO_MIN_HITS_UNFILTERED=1', 
+        'PANAKO_MIN_HITS_FILTERED=1', 
+        'PANAKO_MIN_MATCH_DURATION=0.1',
+        'PANAKO_MIN_SEC_WITH_MATCH=0.01'
+        # 'PANAKO_MIN_TIME_FACTOR=0.6',
+        # 'PANAKO_MAX_TIME_FACTOR=1.4',
+        # 'PANAKO_MIN_FREQ_FACTOR=0.6',
+        # 'PANAKO_MAX_FREQ_FACTOR=1.4',
+    ]
+    res = subprocess.check_output(['panako', *opt, 'STRATEGY=panako', 'query', query_filename.strip()], text=True).strip()
     res = res.splitlines()[1:-1]
     query_hits = []
     for cand in res:
         # Get the ID as second word
-        id_ = int(cand.split(' ')[1])
-        try:
-            matched_id = candidate_id_resolver[id_]
-        except KeyError:
-            print("Cannot resolve: ", id_)
-        else:
-            n_hits = int(cand.split(' ')[5])
-            query_hits.append((matched_id, n_hits))
+        id_ = cand.split(' ; ')[5]
+        id_ = str(os.path.sep.join(i for i in id_.split(os.path.sep)[-2:]))
+        n_hits = int(cand.split(' ; ')[9])
+        query_hits.append((id_, n_hits))
     return [i[0] for i in sorted(query_hits, key=lambda x: x[1], reverse=True)]
 
 
@@ -96,20 +102,19 @@ if __name__ == "__main__":
     print('Storing all candidate hashes in database...')
     store_candidates()
 
-    print('Resolving panako IDs to actual filenames...')
-    cand_mapper = resolve_panako_ids_to_tracknames()
-    print(f'... loaded {len(list(cand_mapper.keys()))} candidate tracks')
-
     print('Loading query-candidate relations...')
     query_cand_relations = load_query_candidate_relations()
     print(f'... loaded {len(list(query_cand_relations.keys()))} query tracks')
 
     average_precisions = []
     for query, ground_truths in query_cand_relations.items():
-        ranked_candidates_panako = query_panako(query, cand_mapper)
-        print(f"Query {query}, sorted candidates: ", ranked_candidates_panako)
+        ranked_candidates_panako = query_panako(query)
         ap = compute_average_precision(ground_truths, ranked_candidates_panako)
-        print(f"Query {query}, average precision: ", ap)
+        print(f"Query {query}")
+        print(f"Ground truth candidates: {ground_truths}")
+        print(f"Ranked panako candidates: {ranked_candidates_panako}")
+        print(f"Average precision: ", ap)
+        print('\n\n\n')
         average_precisions.append(ap)
 
     mean_average_precision = sum(average_precisions) / len(average_precisions)
