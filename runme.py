@@ -77,10 +77,12 @@ def query_panako(query_filename: str) -> list[str]:
     for cand in res:
         # Get the ID as second word
         id_ = cand.split(' ; ')[5]
+        match_start, match_stop = float(cand.split(' ; ')[3]), float(cand.split(' ; ')[4])
+        match_duration = match_stop - match_start
         id_ = str(os.path.sep.join(i for i in id_.split(os.path.sep)[-2:]))
         n_hits = int(cand.split(' ; ')[9])
-        query_hits.append((id_, n_hits))
-    return [i[0] for i in sorted(query_hits, key=lambda x: x[1], reverse=True)]
+        query_hits.append((id_, n_hits, match_duration))
+    return [i[0] for i in sorted(query_hits, key=lambda x: (x[1], x[2]), reverse=True)]
 
 
 def compute_average_precision(ground_truth_candidates, panako_candidates):
@@ -100,7 +102,7 @@ if __name__ == "__main__":
     print('Panako mAP calculator for Sample ID project')
 
     print('Storing all candidate hashes in database...')
-    store_candidates()
+    # store_candidates()
 
     print('Loading query-candidate relations...')
     query_cand_relations = load_query_candidate_relations()
