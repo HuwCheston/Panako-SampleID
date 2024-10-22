@@ -102,7 +102,7 @@ if __name__ == "__main__":
     print('Panako mAP calculator for Sample ID project')
 
     print('Storing all candidate hashes in database...')
-    # store_candidates()
+    store_candidates()
 
     print('Loading query-candidate relations...')
     query_cand_relations = load_query_candidate_relations()
