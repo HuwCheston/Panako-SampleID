@@ -14,4 +14,4 @@ Small wrapper around Panako that calculates mAP for tracks used in the Sample ID
 3. Place audio files for the sample ID project inside `audio`. These should be labelled as either `T001.wav`, `T002.wav`, ... (for query and candidate tracks) or `X001.wav`, `X002.wav` (for noise tracks). Naming *must* follow the order given in Van Balen et al. (2011), appendix.
 4. Make sure Python is installed (no dependencies needed) and run `python runme.py`
 
-The script will store all the candidate and noise tracks in the database, then query all the query tracks and calculate the average precision for each. The default settings of Panako are used with no modifications.
+The script will store all the candidate and noise tracks in the database, then query all the query tracks and calculate the average precision for each using the modifications referred to in our paper.
